@@ -8,8 +8,8 @@ export default {
 
 export const Default = () => {
   return (
-    <Accordion>
-      <AccordionItem>
+    <Accordion defaultIndex={0}>
+      <AccordionItem id="accordion-item-1">
         <AccordionButton>
           <h2>Section1 title</h2>
         </AccordionButton>
@@ -21,13 +21,13 @@ export const Default = () => {
         </AccordionPanel>
       </AccordionItem>
 
-      <AccordionItem>
+      <AccordionItem id="accordion-item-2">
         <AccordionButton>
           <h2>Section2 title</h2>
         </AccordionButton>
         <AccordionPanel>
           <p>
-            Lorem ipsum dolor sit amet, consectetur adipisicing elit. Accusamus ad asperiores
+            seunghwan ipsum dolor sit amet, consectetur adipisicing elit. Accusamus ad asperiores
             dolores nulla quibusdam rerum sit ullam voluptates. Quam, vel!
           </p>
         </AccordionPanel>

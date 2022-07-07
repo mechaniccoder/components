@@ -1,4 +1,4 @@
-import { createContext, forwardRef, useContext, useMemo, useRef, useState } from 'react'
+import { createContext, forwardRef, useContext, useEffect, useMemo, useRef, useState } from 'react'
 
 type UseAccordionProps = {
   allowMultiple?: boolean
@@ -6,7 +6,11 @@ type UseAccordionProps = {
 }
 const useAccordion = (props: UseAccordionProps) => {
   const { allowMultiple = false, defaultIndex = 0 } = props
-  return { allowMultiple, defaultIndex }
+
+  const [openIndex, setOpenIndex] = useState(defaultIndex)
+
+  const accordionRef = useRef<HTMLDivElement | null>(null)
+  return { allowMultiple, defaultIndex, accordionRef, openIndex, setOpenIndex }
 }
 
 const AccordionContext = createContext<ReturnType<typeof useAccordion> | null>(null)
@@ -23,7 +27,11 @@ export const Accordion: React.FC<AccordionProps> = (props) => {
   const { children, ...accordionProps } = props
   const context = useAccordion({ ...accordionProps })
   const ctx = useMemo(() => context, [context])
-  return <AccordionContext.Provider value={ctx}>{children}</AccordionContext.Provider>
+  return (
+    <AccordionContext.Provider value={ctx}>
+      <div ref={context.accordionRef}>{children}</div>
+    </AccordionContext.Provider>
+  )
 }
 
 type UseAccordionItemProps = {
@@ -32,26 +40,39 @@ type UseAccordionItemProps = {
 const useAccordionItem = (props: UseAccordionItemProps) => {
   const { isDisabled = false } = props
 
+  const [index, setIndex] = useState<number | null>(null)
+
+  const accordionItemRef = useRef<HTMLDivElement | null>(null)
+
   const [isOpen, setIsOpen] = useState(false)
+  const { setOpenIndex } = useAccordionContext()
 
   const onOpen = () => {
-    setIsOpen(true)
+    console.log(index)
+    setOpenIndex(index ?? 0)
   }
 
   const onClose = () => {
-    setIsOpen(false)
+    setOpenIndex(0)
   }
 
   const onToggle = () => {
     setIsOpen(!isOpen)
   }
 
+  const onSetIndex = (idx: number) => {
+    setIndex(idx)
+  }
+
   return {
+    index,
     isOpen,
     isDisabled,
     onOpen,
     onClose,
     onToggle,
+    onSetIndex,
+    accordionItemRef,
   }
 }
 
@@ -64,15 +85,25 @@ const useAccordionItemContext = () => {
 
 type AccordionItemProps = {
   children: React.ReactNode
-} & UseAccordionItemProps
+} & UseAccordionItemProps &
+  React.ComponentPropsWithoutRef<'div'>
 export const AccordionItem: React.FC<AccordionItemProps> = (props) => {
   const { children, ...accordionItemProps } = props
+  const { accordionRef } = useAccordionContext()
   const context = useAccordionItem({ ...accordionItemProps })
   const ctx = useMemo(() => context, [context])
 
+  useEffect(() => {
+    const childrenEl = Array.from(accordionRef?.current?.children ?? [])
+    const index = childrenEl.findIndex((node) => node === context.accordionItemRef.current)
+    context.onSetIndex(index)
+  }, [])
+
   return (
     <AccordionItemContext.Provider value={ctx}>
-      <div style={{ maxWidth: 600 }}>{children}</div>
+      <div ref={context.accordionItemRef} style={{ maxWidth: 600 }}>
+        {children}
+      </div>
     </AccordionItemContext.Provider>
   )
 }
@@ -90,10 +121,21 @@ type AccordionButtonProps = {
 export const AccordionButton = forwardRef<HTMLButtonElement, AccordionButtonProps>((props, ref) => {
   const { children } = props
 
-  const { onToggle } = useAccordionButton({})
+  const { onOpen } = useAccordionItemContext()
+
+  const handleClick = () => {
+    onOpen()
+  }
+
+  const buttonStyle: React.CSSProperties = {
+    width: '100%',
+    border: '1px solid gray',
+    backgroundColor: 'transparent',
+    outline: 'none',
+  }
 
   return (
-    <button ref={ref} onClick={onToggle}>
+    <button ref={ref} style={buttonStyle} onClick={handleClick}>
       {children}
     </button>
   )
@@ -118,7 +160,12 @@ export const AccordionPanel: React.FC<AccordionPanelProps> = (props) => {
     height = panelContainer.scrollHeight
   }
 
-  const { isOpen } = useAccordionPanel({})
+  const { openIndex } = useAccordionContext()
+  const { index } = useAccordionItemContext()
+
+  console.log(openIndex, index, height, children)
+
+  const isOpen = openIndex === index
 
   const panelStyle: React.CSSProperties = useMemo(
     () => ({
@@ -128,7 +175,7 @@ export const AccordionPanel: React.FC<AccordionPanelProps> = (props) => {
       // height: isOpen ? height : 0,
       transition: 'all 0.3s',
     }),
-    [isOpen]
+    [isOpen, height]
   )
 
   return (
